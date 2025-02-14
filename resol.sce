@@ -159,7 +159,7 @@ Sp_S = K_S(kS_r, kS_c)                -K_S(kS_r       , 1:kS_r-1)  * inv(K_S(1:k
 //disp("Sp_S:");
 //disp(Sp_S);
 
-// The concatenated primal complements :
+// The concatenated Primal complements :
 
 Sp = zeros((2*S-2,2*S-2));
 for i = 1:S-2
@@ -168,8 +168,8 @@ end
 Sp(1,1)=Sp_1;
 Sp(2*S-2,2*S-2)=Sp_S;
 
-//disp("Sp:");
-//disp(Sp);
+disp("Sp:");
+disp(Sp);
 
 // Calculate Primal assembly operators of subdomains
 
@@ -181,8 +181,8 @@ end
 A(1,1)=1;
 A(S-1,2*S-2)=1;
 
-//disp("A:");
-//disp(A);
+disp("A:");
+disp(A);
 
 // Calculate Primal schur second members of subdomains
 
@@ -205,4 +205,50 @@ disp(Up);
 * Section 2 : Domain Decomposition
 * Dual Schur Approach
 **********************************/
+
+// Calculate Dual assembly operators of subdomains
+
+A_ = zeros((S-1,2*S-2));
+for i = 2:S-1
+    A_(i-1,2*i-2) = -1;
+    A_(i,2*i-1) = 1;
+end
+A_(1,1)=1;
+A_(S-1,2*S-2)=-1;
+
+disp("A_:");
+disp(A_);
+
+// The concatenated Dual complements :
+
+Sd_1 = pinv(Sp_1)
+Sd_s = pinv(Sp_s)
+Sd_S = pinv(Sp_S)
+
+Sd = zeros((2*S-2,2*S-2));
+for i = 1:S-2
+    Sd(2*i:2*i+1,2*i:2*i+1)= Sd_s;
+end
+Sd(1,1)=Sd_1;
+Sd(2*S-2,2*S-2)=Sd_S;
+
+disp("Sd:");
+disp(Sd);
+
+//The Concatenated rigid body modes 
+
+Rb_1 = 0; //eliminated
+Rb_s = kernel(Sp_s); //kernel
+Rb_S = 1;
+
+Rb = zeros((2*S-2,S-1));
+
+for i = 1:S-2
+    Rb(2*i,i)= Rb_s(1);
+    Rb(2*i+1,i)= Rb_s(2);
+end
+Rb(2*S-2,S-1) = Rb_S;
+
+disp("Rb:");
+disp(Rb);
 
