@@ -15,84 +15,13 @@ S = N / eles;      // Number of subdomains
 Inodes = S + 1;        // Number of interfacial nodes
 H = L / S;         // Length of the subdomains
 
-/***********************************
-* Section 1 : Resolution without DDM
-***********************************/
- 
-// Stiffness matrix for one element (local matrix)
-k_local = (E * A / h) * [1, -1; -1, 1];
-
-// Global Stiffness Matrix
-K_global = zeros(n, n);
-
-for i = 1:n-1
-    K_global(i:i+1, i:i+1) = K_global(i:i+1, i:i+1) + k_local;
-end
-
-//Direct elimination of DOF
-K_trim = K_global(2:$, 2:$); // Trim first row and column, cuz u[0] = 0
-f_trim = zeros(n-1, 1); // Trim first value, cuz u[0] = 0
-f_trim($) = Fd ; // Given force
-u_trim = K_trim \ f_trim; //Solve
-u = [0; u_trim]; //Solution of u
-f = K_global*u; //Solution od f
-
-//disp("Stiffness Matrix:");
-//disp(K_global);
-disp("Nodal Deplacements by elimination:");
-disp(u);
-//disp("Nodal Forces:");
-//disp(f);
-
-//Penality method
-M = (E * A / h) * 1e4;          //penality value
-K_penal = K_global;
-K_penal(1,1) = K_penal(1,1) + M;
-f_penal = zeros(n, 1);
-//f_penal(1) = 1; // set initial guess to f1 
-f_penal($) = Fd;
-u = K_penal \ f_penal;
-
-f_penal(1) = -M * u(1); // re-calculate f1 (final solution)
-
-//disp("Stiffness Matrix:");
-//disp(K_penal);
-disp("Nodal Deplacements by penalty:");
-disp(u);
-//disp("Nodal Force by penalty:");
-//disp(f_penal);
-
-
-//Langrangian multiplier
-K_extend = zeros(n+1, n+1);
-K_extend(1:n,1:n) = K_global;
-K_extend(1,n+1)=1;
-K_extend(n+1,1)=1;
-f_lm = zeros(n+1,1);
-f_lm($-1) = Fd; // given value for right side
-
-x_extend = K_extend \ f_lm;
-
-u = x_extend(1:$-1);
-lambda = x_extend($);
-f = f_lm(1:$-1);
-f(1) = -lambda;
-
-//disp("Stiffness Matrix:");
-//disp(K_extend);
-disp("Nodal Deplacements by lagrangian:");
-disp(u);
-//disp("Nodal Forces by lagrangian:");
-//disp(f);
-
-
-
 /*********************************
 * Section 2 : Domain Decomposition
-* Primal Schur Approach
+* Primal Schur Approach - CG
 **********************************/
 
 
+//Create stiffness matrix
 function [K_1_strim, K_s, K_S]=build_K(eles,E,A,h)
     
     nodes = eles+1;
@@ -138,25 +67,7 @@ function [K_1_strim, K_s, K_S]=build_K(eles,E,A,h)
 
 endfunction
 
-function [Sp, k1_r, k1_c, ks_r, ks_c, kS_r, kS_c]=build_Sp(S,K_1,K_s,K_S)
-    
-    [k1_r,k1_c] = size(K_1);
-    [ks_r,ks_c] = size(K_s);
-    [kS_r,kS_c] = size(K_S);
-    
-    Sp_1 = K_1(k1_r, k1_c)                -K_1(k1_r, 1:k1_r-1)         * inv(K_1(1:k1_r-1, 1:k1_r-1))         * K_1(1:k1_r-1, k1_c);
-    Sp_s = K_s(ks_r-1:ks_r, ks_c-1:ks_c)  -K_s(ks_r-1:ks_r, 1:ks_r-2)  * inv(K_s(1:ks_r-2, 1:ks_r-2))         * K_s(1:ks_r-2,  ks_c-1:ks_c);
-    Sp_S = K_S(kS_r, kS_c)                -K_S(kS_r       , 1:kS_r-1)  * inv(K_S(1:kS_r-1, 1:kS_r-1))         * K_S(1:kS_r-1,  kS_c); 
-    
-    Sp = zeros((2*S-2,2*S-2));
-    for i = 1:S-2
-        Sp(2*i:2*i+1,2*i:2*i+1)= Sp_s;
-    end
-    Sp(1,1)=Sp_1;
-    Sp(2*S-2,2*S-2)=Sp_S;
-endfunction
-
-
+//Create Primal assemly
 function AA=build_AA(S)
     AA = zeros((S-1,2*S-2));
     for i = 2:S-1
@@ -167,11 +78,7 @@ function AA=build_AA(S)
     AA(S-1,2*S-2)=1;
 endfunction
 
-function bp=build_bp(S,Fd)
-    bp = zeros((2*S-2,1));
-    bp(2*S-2) = Fd;
-endfunction
-
+//Extract different parts of K
 function [Kii, Kib, Kbi, Kbb] = extract_K(K, s, S)
     if (s == 1 || s == S) then
         Kii = K(1:$-1, 1:$-1);
@@ -186,23 +93,24 @@ function [Kii, Kib, Kbi, Kbb] = extract_K(K, s, S)
     end
 endfunction
 
-
-function Up=Conjugate_Gradient(eles,S,E,A,h,Fd,m)
+//Conjugate gradient
+function uub=Conjugate_Gradient(eles,S,E,A,h,Fd,m,tol)
     
     //preliminary 
     [K_1_strim K_s K_S]=build_K(eles,E,A,h);
-    [Sp k1_r k1_c ks_r ks_c kS_r kS_c]=build_Sp(S,K_1_strim,K_s,K_S);
+    [k1_r,k1_c] = size(K_1_strim);
+    [ks_r,ks_c] = size(K_s);
+    [kS_r,kS_c] = size(K_S);
     AA = build_AA(S);
-    bp = build_bp(S,Fd);
-    SSp = AA*Sp*AA';
-    BBp = AA*bp;
+    
+    /*** Initialization Step ***/
     
     //ub0
-    ub0 = zeros(S-1,1);
+    uub = zeros(S-1,1);
     //Compure concatenated residual rb = zeros(2*S-2,1);
     rb_concatanated = [];
     //Compute local concatenated vector
-    ub_concatanated = AA' * ub0;
+    ub_concatanated = AA' * uub;
     
     //s=1
     [Kii, Kib, Kbi, Kbb] = extract_K(K_1_strim, 1, S);
@@ -218,7 +126,7 @@ function Up=Conjugate_Gradient(eles,S,E,A,h,Fd,m)
     fb_s=zeros(2,1);
     for s=2:S-1
         [Kii, Kib, Kbi, Kbb] = extract_K(K_s, s, S);
-        ub0_s = ub_concatanated(s:s+1,1);
+        ub0_s = ub_concatanated(2*(s-1):2*(s-1)+1);
         ui0_s = inv(Kii)*(fi_s-Kib*ub0_s);
         res_s = K_s*[ui0_s; ub0_s]-[fi_s; fb_s] ;
         rb_concatanated = [rb_concatanated; -res_s($-1:$)];
@@ -235,45 +143,80 @@ function Up=Conjugate_Gradient(eles,S,E,A,h,Fd,m)
     
     //Compute global residual
     rrb = AA*rb_concatanated;
-    ddbk=rrb0;
+    ddb=rrb;
     
-    for k=0:m
+    //Check onvergence 
+    norm_r0 = norm(rrb);  
+    if norm_r0 == 0 then
+       disp("Initial residual is zero. Already converged.");
+       return
+    end
+    
+
+    /*** Iterations ***/ 
+    
+    for k=1:m
+        
         // Compute local vector
-        db_concatanated = AA' * ddbk ;
+        db_concatanated = AA' * ddb ;
+        local_matvec_concatanated = [];
         
         //s=1
         [Kii, Kib, Kbi, Kbb] = extract_K(K_1_strim, 1, S);
-        db_1 = db_concatanated(1,1);
-        di_1 = inv(Kii)*Kib*db_1;
+        db_1 = db_concatanated(1);
+        di_1 = -inv(Kii)*Kib*db_1;
         res_1 = K_1_strim*[di_1; db_1] ;
-        db_concatanated = [db_concatanated; res_1($)];
-                           
+        local_matvec_concatanated = [local_matvec_concatanated; res_1($)];
+        
         //s=2...S-1
         for s=2:S-1
             [Kii, Kib, Kbi, Kbb] = extract_K(K_s, s, S);
-            db_s = ub_concatanated(s:s+1,1);
-            di_s = inv(Kii)*Kib*db_s;
+            db_s = db_concatanated(2*(s-1):2*(s-1)+1);
+            di_s = -inv(Kii)*Kib*db_s;
             res_s = K_s*[di_s; db_s];
-            db_concatanated = [db_concatanated; res_s($-1:$)];
+            local_matvec_concatanated = [local_matvec_concatanated; res_s($-1:$)];
         end
      
         //s=S
         [Kii, Kib, Kbi, Kbb] = extract_K(K_S, S, S);
-        db_S = db_concatanated(1,1);
-        di_S = inv(Kii)*Kib*db_S;
+        db_S = db_concatanated($);
+        di_S = -inv(Kii)*Kib*db_S;
         res_S = K_S*[di_S; db_S] ;
-        db_concatanated = [db_concatanated; res_S($)];
-        
+        local_matvec_concatanated = [local_matvec_concatanated; res_S($)];
         
         //Compute global matrix vector product 
-       
+        SSdd = AA*local_matvec_concatanated;
+        
+        //Compute optimal step
+        alpha = (rrb'*ddb)/(ddb'*SSdd);
+        
+        //Compute iterate
+        uub = uub+alpha*ddb;
+        
+        //Compute residual
+        rrb = rrb - alpha*SSdd;
+                            
+        //Compute orthogonalization parameter
+        beta1 = - (rrb'*SSdd)/(ddb'*SSdd);
+        
+        //Update search direction
+        ddb = rrb + beta1*ddb ;
+        
+         //Check onvergence 
+        rel_error = norm(rrb) / norm_r0; 
+        if rel_error < tol then
+           disp("Converged at iteration " + string(k));
+           break;
+        end
     end
 
 endfunction
 
 
 
-Up=Conjugate_Gradient(eles,S,E,A,h,Fd);
+Up=Conjugate_Gradient(eles,S,E,A,h,Fd,100,0.0001);
+disp("Domains Deplacements by Primal-CG");
+disp(Up);
 
 
 
