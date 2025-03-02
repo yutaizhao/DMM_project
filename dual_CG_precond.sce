@@ -5,7 +5,7 @@ L = 1.0;          // Length of the bar
 E = 1e4;          // Young'A Modulus
 A = 1.0;          // Surface
 Fd = 500;         // Applied force at the last element (N)
-N = 100;           // Number of elements
+N = 15;           // Number of elements
 n = N + 1;        // Number of nodes
 h = L / N;        // Length of the elements
 
@@ -99,6 +99,13 @@ function Sp=build_Sp(s,S)
     end
 endfunction
 
+
+/* Local Sd */
+function Sd=build_Sd(s,S)
+    Sp=build_Sp(s,S);
+    Sd = pinv(Sp);
+endfunction
+
 /* Global AA_ */
 function AA_=build_AA_(S)
     AA_ = zeros((S-1,2*S-2));
@@ -116,19 +123,19 @@ function A_=build_A_(s,S)
         A_ = zeros((S-1,1));
         A_(1,1)=1;
     elseif s==S then 
-        A_ = zeros((S-1,2));
-        A_(s-1,2*s-2) = -1;
-        A_(s,2*s-1) = 1;
-    elseif (s > 1 && s < S) then 
         A_ = zeros((S-1,1));
         A_(S-1,1)=-1;
+    elseif (s > 1 && s < S) then 
+        A_ = zeros((S-1,2));
+        A_(s-1,1) = -1;
+        A_(s,2) = 1;
     end
 endfunction
 
 /* Local Rb */
 function Rb=build_Rb(s,S)
     if s==1 then
-        Rb = 0;
+        Rb = 0; //useless
     elseif s==S then 
         Rb = 1;
     elseif (s > 1 && s < S) then 
@@ -148,12 +155,13 @@ function bp=build_bp(s,S)
     end
 endfunction
 
-/*Local G*/
-function G=build_G(s,S)
-    A_=build_A_(s,S);
-    Rb=build_Rb(s,S);
-    G = A_*Rb;
+/*Local bd*/
+function bd=build_bd(s,S)
+    bp=build_bp(s,S);
+    Sd=build_Sd(s,S);
+    bd = Sd*bp;
 endfunction
+
 
 /*Local e*/
 function e=build_e(s,S)
@@ -162,43 +170,145 @@ function e=build_e(s,S)
     e = Rb'*bp;
 endfunction
 
-/*Local Q*/
-function Q=build_Q(S)
-    Q = eye(S-1);// for homogeneuos struct
+/*Global G*/
+function G=build_G(S)
+    
+// Initialization of stiffness matices of subdomain s
+K_s = zeros(nodes, nodes);
+for i = 1:eles-1
+    K_s(i, i) = K_s(i, i) + 2; 
+end
+for i = 1:eles-2
+    K_s(i, i+1) = K_s(i, i+1) - 1; 
+    K_s(i+1, i) = K_s(i+1, i) - 1;
+end
+K_s(1, eles) = K_s(1, eles) - 1;
+K_s(eles, 1) = K_s(eles, 1) -1;
+K_s(nodes, eles-1) = K_s(nodes, eles-1) - 1;
+K_s(eles-1, nodes) = K_s(eles-1, nodes) - 1;
+K_s(eles, eles) = K_s(eles, eles) + 1;
+K_s(nodes, nodes) = K_s(nodes, nodes) + 1; 
+K_s = K_s * (E * A / h);
+
+Sp_s = K_s($-1:$, $-1:$)  -K_s($-1:$, 1:$-2) * inv(K_s(1:$-2, 1:$-2)) * K_s(1:$-2, $-1:$);
+
+//The Concatenated rigid body modes 
+
+Rb_1 = 0; //eliminated
+Rb_s = kernel(Sp_s); //kernel
+Rb_S = 1;
+
+Rb = zeros((2*S-2,S-1));
+
+for i = 1:S-2
+    Rb(2*i,i)= Rb_s(1);
+    Rb(2*i+1,i)= Rb_s(2);
+end
+Rb(2*S-2,S-1) = Rb_S;
+AA_=build_AA_(S);
+G = AA_ * Rb;
 endfunction
 
-/*Local P*/
-function P=build_P(s,S)
-    Q = build_Q(S);
-    G = build_G(s,S);
-    P = eye(S-1) - Q*G*inv((G'*Q*G))*G';
+G = build_G(S);
+
+/*Global e*/
+function ee=build_ee(S,Fd)
+    // Initialization of stiffness matices of subdomain s
+K_s = zeros(nodes, nodes);
+for i = 1:eles-1
+    K_s(i, i) = K_s(i, i) + 2; 
+end
+for i = 1:eles-2
+    K_s(i, i+1) = K_s(i, i+1) - 1; 
+    K_s(i+1, i) = K_s(i+1, i) - 1;
+end
+K_s(1, eles) = K_s(1, eles) - 1;
+K_s(eles, 1) = K_s(eles, 1) -1;
+K_s(nodes, eles-1) = K_s(nodes, eles-1) - 1;
+K_s(eles-1, nodes) = K_s(eles-1, nodes) - 1;
+K_s(eles, eles) = K_s(eles, eles) + 1;
+K_s(nodes, nodes) = K_s(nodes, nodes) + 1; 
+K_s = K_s * (E * A / h);
+
+    Rb_1 = 0; //eliminated
+    Sp_s =  K_s($-1:$, $-1:$)  -K_s($-1:$, 1:$-2) * inv(K_s(1:$-2, 1:$-2)) * K_s(1:$-2, $-1:$);
+    Rb_s = kernel(Sp_s); //kernel
+    Rb_S = 1;
+
+    Rb = zeros((2*S-2,S-1));
+
+    for i = 1:S-2
+        Rb(2*i,i)= Rb_s(1);
+        Rb(2*i+1,i)= Rb_s(2);
+    end
+    Rb(2*S-2,S-1) = Rb_S;
+    bp = zeros((2*S-2,1));
+    bp(2*S-2) = Fd;
+    
+    ee = Rb'*bp;
 endfunction
 
 
-/*Local lambda*/
-function lambda=build_lambda(s,S)
-    Q = build_Q(S);
-    G = build_G(s,S);
-    e=build_e(s,S);
-    lambda = - Q*G*inv((G'*Q*G))*G'*e;
-endfunction
 
+/*P*/
+P = eye(S-1,S-1) - G*inv(G'*G)*G';
+disp("P");
+disp(P);
+/*lambda0*/
+ee=build_ee(S,Fd);
+lambda0 =  - G*inv(G'*G)*ee;
 
 //TEFI
 function uub=TEFI(eles,S,E,A,h,Fd,m,tol)
     
     /*Initialisation */
-    r = [];
-    for s=1:S
+     AA_=build_AA_(S);
+     
+    //lambda(0)
+    lambda = lambda0;
+    disp("lambda");
+    disp(lambda);
+    //Compute local concatenated lambda
+    lambda_concatanated = AA_' * lambda;
+    disp("lambda_concatanated");
+    disp(lambda_concatanated);
+    //Compute r0
+    rb_concatanated = [];
+    //s=1
+    bd=build_bd(1,S);
+    Sd=build_Sd(1,S);
+    lambda = lambda_concatanated(1);
+    rb_concatanated = [rb_concatanated; -bd-Sd*lambda];
+    
+    //s>1, s<S
+    for s=2:S-1
+        disp("s");
         disp(s);
-        bp=build_bp(s,S);
-        P = build_P(s,S);
-        lambda = build_lambda(s,S);
-        Sp=build_Sp(s,S);
-        bd = pinv(Sp) * bp;
-        r = [r;P'*(-bd-pinv(Sp)*lambda)];
+        bd=build_bd(s,S);
+        disp("bd");
+        disp(bd);
+        Sd=build_Sd(s,S);
+        disp("Sd");
+        disp(Sd);
+        lambda = lambda_concatanated(2*(s-1):2*(s-1)+1);
+        disp("lambda");
+        disp(lambda);
+        rb_concatanated = [rb_concatanated; -bd-Sd*lambda];
     end
-    r_concatanated = AA_ * r;
+    
+    //s=S
+    //s=1
+    bd=build_bd(S,S);
+    Sd=build_Sd(S,S);
+    lambda = lambda_concatanated($);
+    rb_concatanated = [rb_concatanated; -bd-Sd*lambda];
+    disp("rb_concatanated");
+    disp(rb_concatanated);
+    disp("AA_");
+    disp(AA_);
+    disp("AA_*rb_concatanated");
+    disp(AA_*rb_concatanated);
+    rr = P'*(AA_*rb_concatanated);
     
 endfunction
 
