@@ -99,6 +99,23 @@ function Sp=build_Sp(s,S)
     end
 endfunction
 
+/* Concatenated Sp */
+
+function Sp_conca=build_Sp_conca(S)
+    Sp_conca = zeros((2*S-2,2*S-2));
+    Sp_1=build_Sp(1,S);
+    Sp_S=build_Sp(S,S);
+    
+    if S>2 then
+        Sp_s=build_Sp(2,S);
+        for i = 1:S-2
+            Sp_conca(2*i:2*i+1,2*i:2*i+1)= Sp_s;
+        end
+    end
+    Sp_conca(1,1)=Sp_1;
+    Sp_conca(2*S-2,2*S-2)=Sp_S;
+endfunction
+
 
 /* Local Sd */
 function Sd=build_Sd(s,S)
@@ -120,11 +137,9 @@ endfunction
 /* Local A_ */
 function A_=build_A_(s,S)
     if s==1 then
-        A_ = zeros((S-1,1));
-        A_(1,1)=1;
+        A_=1;
     elseif s==S then 
-        A_ = zeros((S-1,1));
-        A_(S-1,1)=-1;
+        A_=-1;
     elseif (s > 1 && s < S) then 
         A_ = zeros((S-1,2));
         A_(s-1,1) = -1;
@@ -170,43 +185,45 @@ function e=build_e(s,S)
     e = Rb'*bp;
 endfunction
 
+
+
 /*Global G*/
 function G=build_G(S)
     
-// Initialization of stiffness matices of subdomain s
-K_s = zeros(nodes, nodes);
-for i = 1:eles-1
-    K_s(i, i) = K_s(i, i) + 2; 
-end
-for i = 1:eles-2
-    K_s(i, i+1) = K_s(i, i+1) - 1; 
-    K_s(i+1, i) = K_s(i+1, i) - 1;
-end
-K_s(1, eles) = K_s(1, eles) - 1;
-K_s(eles, 1) = K_s(eles, 1) -1;
-K_s(nodes, eles-1) = K_s(nodes, eles-1) - 1;
-K_s(eles-1, nodes) = K_s(eles-1, nodes) - 1;
-K_s(eles, eles) = K_s(eles, eles) + 1;
-K_s(nodes, nodes) = K_s(nodes, nodes) + 1; 
-K_s = K_s * (E * A / h);
+    // Initialization of stiffness matices of subdomain s
+    K_s = zeros(nodes, nodes);
+    for i = 1:eles-1
+        K_s(i, i) = K_s(i, i) + 2; 
+    end
+    for i = 1:eles-2
+        K_s(i, i+1) = K_s(i, i+1) - 1; 
+        K_s(i+1, i) = K_s(i+1, i) - 1;
+    end
+    K_s(1, eles) = K_s(1, eles) - 1;
+    K_s(eles, 1) = K_s(eles, 1) -1;
+    K_s(nodes, eles-1) = K_s(nodes, eles-1) - 1;
+    K_s(eles-1, nodes) = K_s(eles-1, nodes) - 1;
+    K_s(eles, eles) = K_s(eles, eles) + 1;
+    K_s(nodes, nodes) = K_s(nodes, nodes) + 1; 
+    K_s = K_s * (E * A / h);
 
-Sp_s = K_s($-1:$, $-1:$)  -K_s($-1:$, 1:$-2) * inv(K_s(1:$-2, 1:$-2)) * K_s(1:$-2, $-1:$);
+    Sp_s = K_s($-1:$, $-1:$)  -K_s($-1:$, 1:$-2) * inv(K_s(1:$-2, 1:$-2)) * K_s(1:$-2, $-1:$);
 
-//The Concatenated rigid body modes 
+    //The Concatenated rigid body modes 
 
-Rb_1 = 0; //eliminated
-Rb_s = kernel(Sp_s); //kernel
-Rb_S = 1;
+    Rb_1 = 0; //eliminated
+    Rb_s = kernel(Sp_s); //kernel
+    Rb_S = 1;
 
-Rb = zeros((2*S-2,S-1));
+    Rb = zeros((2*S-2,S-1));
 
-for i = 1:S-2
-    Rb(2*i,i)= Rb_s(1);
-    Rb(2*i+1,i)= Rb_s(2);
-end
-Rb(2*S-2,S-1) = Rb_S;
-AA_=build_AA_(S);
-G = AA_ * Rb;
+    for i = 1:S-2
+        Rb(2*i,i)= Rb_s(1);
+        Rb(2*i+1,i)= Rb_s(2);
+    end
+    Rb(2*S-2,S-1) = Rb_S;
+    AA_=build_AA_(S);
+    G = AA_ * Rb;
 endfunction
 
 G = build_G(S);
@@ -214,21 +231,21 @@ G = build_G(S);
 /*Global e*/
 function ee=build_ee(S,Fd)
     // Initialization of stiffness matices of subdomain s
-K_s = zeros(nodes, nodes);
-for i = 1:eles-1
-    K_s(i, i) = K_s(i, i) + 2; 
-end
-for i = 1:eles-2
-    K_s(i, i+1) = K_s(i, i+1) - 1; 
-    K_s(i+1, i) = K_s(i+1, i) - 1;
-end
-K_s(1, eles) = K_s(1, eles) - 1;
-K_s(eles, 1) = K_s(eles, 1) -1;
-K_s(nodes, eles-1) = K_s(nodes, eles-1) - 1;
-K_s(eles-1, nodes) = K_s(eles-1, nodes) - 1;
-K_s(eles, eles) = K_s(eles, eles) + 1;
-K_s(nodes, nodes) = K_s(nodes, nodes) + 1; 
-K_s = K_s * (E * A / h);
+    K_s = zeros(nodes, nodes);
+    for i = 1:eles-1
+        K_s(i, i) = K_s(i, i) + 2; 
+    end
+    for i = 1:eles-2
+        K_s(i, i+1) = K_s(i, i+1) - 1; 
+        K_s(i+1, i) = K_s(i+1, i) - 1;
+    end
+    K_s(1, eles) = K_s(1, eles) - 1;
+    K_s(eles, 1) = K_s(eles, 1) -1;
+    K_s(nodes, eles-1) = K_s(nodes, eles-1) - 1;
+    K_s(eles-1, nodes) = K_s(eles-1, nodes) - 1;
+    K_s(eles, eles) = K_s(eles, eles) + 1;
+    K_s(nodes, nodes) = K_s(nodes, nodes) + 1; 
+    K_s = K_s * (E * A / h);
 
     Rb_1 = 0; //eliminated
     Sp_s =  K_s($-1:$, $-1:$)  -K_s($-1:$, 1:$-2) * inv(K_s(1:$-2, 1:$-2)) * K_s(1:$-2, $-1:$);
@@ -248,12 +265,23 @@ K_s = K_s * (E * A / h);
     ee = Rb'*bp;
 endfunction
 
+/*A_tild*/
+function AA_tild_=build_AA_tild_(S)
+    AA_=build_AA_(S);
+    AA_tild_ = pinv(AA_*AA_')*AA_;
+endfunction
+
+/*Sd_inv*/
+function SSd_inv=build_SSd_inv(S)
+    AA_tild_=build_AA_tild_(S);
+    Sp_conca=build_Sp_conca(S);
+    SSd_inv=AA_tild_*Sp_conca*AA_tild_';
+endfunction
 
 
 /*P*/
 P = eye(S-1,S-1) - G*inv(G'*G)*G';
-disp("P");
-disp(P);
+
 /*lambda0*/
 ee=build_ee(S,Fd);
 lambda0 =  - G*inv(G'*G)*ee;
@@ -262,53 +290,49 @@ lambda0 =  - G*inv(G'*G)*ee;
 function uub=TEFI(eles,S,E,A,h,Fd,m,tol)
     
     /*Initialisation */
+    
      AA_=build_AA_(S);
      
     //lambda(0)
     lambda = lambda0;
-    disp("lambda");
-    disp(lambda);
     //Compute local concatenated lambda
     lambda_concatanated = AA_' * lambda;
-    disp("lambda_concatanated");
-    disp(lambda_concatanated);
-    //Compute r0
-    rb_concatanated = [];
+    
+    /** Compute r0 **/
+    
+    r_concatanated = [];
+
     //s=1
     bd=build_bd(1,S);
     Sd=build_Sd(1,S);
     lambda = lambda_concatanated(1);
-    rb_concatanated = [rb_concatanated; -bd-Sd*lambda];
+    r_concatanated = [r_concatanated; -bd-Sd*lambda];
     
     //s>1, s<S
     for s=2:S-1
-        disp("s");
-        disp(s);
         bd=build_bd(s,S);
-        disp("bd");
-        disp(bd);
         Sd=build_Sd(s,S);
-        disp("Sd");
-        disp(Sd);
         lambda = lambda_concatanated(2*(s-1):2*(s-1)+1);
-        disp("lambda");
-        disp(lambda);
-        rb_concatanated = [rb_concatanated; -bd-Sd*lambda];
+        r_concatanated = [r_concatanated; -bd-Sd*lambda];
     end
     
     //s=S
-    //s=1
     bd=build_bd(S,S);
     Sd=build_Sd(S,S);
     lambda = lambda_concatanated($);
-    rb_concatanated = [rb_concatanated; -bd-Sd*lambda];
-    disp("rb_concatanated");
-    disp(rb_concatanated);
-    disp("AA_");
-    disp(AA_);
-    disp("AA_*rb_concatanated");
-    disp(AA_*rb_concatanated);
-    rr = P'*(AA_*rb_concatanated);
+    r_concatanated = [r_concatanated; -bd-Sd*lambda];
+
+    rr = P'*(AA_*r_concatanated);
+    
+    /** Compute z0 **/
+    
+    SSd_inv=build_SSd_inv(S);
+    zz = P*SSd_inv*rr;
+    
+    disp("rr");
+    disp(rr);
+    disp("zz");
+    disp(zz);
     
 endfunction
 
