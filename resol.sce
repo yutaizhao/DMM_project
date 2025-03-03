@@ -238,7 +238,7 @@ Sd(2*S-2,2*S-2)=Sd_S;
 //The Concatenated rigid body modes 
 
 Rb_1 = 0; //eliminated
-Rb_s = kernel(Sp_s); //kernel
+Rb_s = ones(2,1); //kernel
 Rb_S = 1;
 
 Rb = zeros((2*S-2,S-1));
@@ -289,11 +289,11 @@ dual_M(SSd_r+1:$, 1:SSd_c)= G';
 dual_rhs(1:bbd_r) = -bbd;
 dual_rhs(bbd_r+1:$) = -e;
 
-//disp("dual_M:");
-//disp(dual_M);
+disp("dual_M:");
+disp(dual_M);
 
-//disp("dual_rhs:");
-//disp(dual_rhs);
+disp("dual_rhs:");
+disp(dual_rhs);
 
 dual_Sol = dual_M\dual_rhs
 Ud = dual_Sol(bbd_r+1:$)

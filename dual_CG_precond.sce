@@ -5,7 +5,7 @@ L = 1.0;          // Length of the bar
 E = 1e4;          // Young'A Modulus
 A = 1.0;          // Surface
 Fd = 500;         // Applied force at the last element (N)
-N = 50;           // Number of elements
+N = 100;           // Number of elements
 n = N + 1;        // Number of nodes
 h = L / N;        // Length of the elements
 
@@ -174,8 +174,7 @@ function Rb=build_Rb(s,S)
     elseif s==S then 
         Rb = 1;
     elseif (s > 1 && s < S) then 
-        Sp_s = build_Sp(s,S);
-        Rb = kernel(Sp_s);
+        Rb = ones(2,1);
     end
 endfunction
 
@@ -183,25 +182,7 @@ endfunction
 /* Global Rb */
 function Rb_conca=build_Rb_conca(S)
 
-    K_s = zeros(nodes, nodes);
-    for i = 1:eles-1
-        K_s(i, i) = K_s(i, i) + 2; 
-    end
-    for i = 1:eles-2
-        K_s(i, i+1) = K_s(i, i+1) - 1; 
-        K_s(i+1, i) = K_s(i+1, i) - 1;
-    end
-    K_s(1, eles) = K_s(1, eles) - 1;
-    K_s(eles, 1) = K_s(eles, 1) -1;
-    K_s(nodes, eles-1) = K_s(nodes, eles-1) - 1;
-    K_s(eles-1, nodes) = K_s(eles-1, nodes) - 1;
-    K_s(eles, eles) = K_s(eles, eles) + 1;
-    K_s(nodes, nodes) = K_s(nodes, nodes) + 1; 
-    K_s = K_s * (E * A / h);
-
-    Rb_1 = 0; //eliminated
-    Sp_s =  K_s($-1:$, $-1:$)  -K_s($-1:$, 1:$-2) * inv(K_s(1:$-2, 1:$-2)) * K_s(1:$-2, $-1:$);
-    Rb_s = kernel(Sp_s); //kernel
+    Rb_s = ones(2,1); //kernel
     Rb_S = 1;
 
     Rb_conca = zeros((2*S-2,S-1));
