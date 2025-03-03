@@ -5,11 +5,11 @@ L = 1.0;          // Length of the bar
 E = 1e4;          // Young'A Modulus
 A = 1.0;          // Surface
 Fd = 500;         // Applied force at the last element (N)
-N = 100;           // Number of elements
+N = 9;           // Number of elements
 n = N + 1;        // Number of nodes
 h = L / N;        // Length of the elements
 
-eles = 5;           // Number of elements in each subdomain 
+eles = 3;           // Number of elements in each subdomain 
 nodes = eles + 1;   // Number of nodes in each subdomain
 S = N / eles;      // Number of subdomains
 Inodes = S + 1;        // Number of interfacial nodes
@@ -373,7 +373,7 @@ function u_b=TEFI(eles,S,E,A,h,Fd,m,tol)
         dd_list=[dd_list; dd];
         
          //Check onvergence 
-        rel_error = norm(rr) / (norm_r0+e-6); 
+        rel_error = norm(rr) / (norm_r0+E-20); 
         if rel_error < tol then
            disp("Converged at iteration " + string(i));
            break;
