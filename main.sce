@@ -34,22 +34,42 @@ function err = relative_error(x_ref, x)
     err = norm(x - x_ref) / norm(x_ref);
 endfunction
 
+// extract u_ref for interfacial nodes
+function u_ref = extract_u_ref(u, S, eles)
+    u_ref = zeros(S-1, 1);
+    for i = 1:S-1
+        u_ref(i) = u(i * eles + 1);
+    end
+endfunction
+
+
+tol = 1e-6;
+max_iter = 100;
+
 K = K_global(E, A, h, n);
 [u, f] = elimination(n, K, Fd);
 [u_pen, f_pen] = penalty(E, A, h, K, Fd);
 [u_L, f_L] =lagrangian(n, K, Fd);
 
-Up = Conjugate_Gradient_Dual_Schur(eles, S, E, A, h, Fd, 100, 0.0001);
+u_ref = extract_u_ref(u, S, eles);
 
-//err = relative_error(u, Up);
+[u_b, nb_iter, rel_err] = primal_schur_BDD(eles, S, E, A, h, Fd, max_iter, tol)
 
+err_primal = relative_error(u_ref, u_b);
+
+/*
 disp("global K");
 disp(K);
 disp("u ref:");
 disp(u);
 disp(u_pen);
 disp(u_L);
+*/
+
+disp("u ref:");
+disp(u_ref);
 disp("u precond schur:");
-disp(Up);
-//disp("error:");
-//disp(err);
+disp(u_b);
+
+disp("error:");
+disp(err);
