@@ -4,14 +4,12 @@ exec("./Tools.sce");
 E = 1e4;                   // Young'A Modulus
 A = 1.0;                   // Surface
 Fd = 500;                  // Applied force at the last element (N)
-L=20;
 
-N = 90;
+N = 100;
 n = N + 1;        // Number of nodes
 h = L / N;        // Length of the elements
 
-eles = 30;
-
+eles = 10
 
 S = N / eles;      // Number of subdomains
 nodes = eles + 1;   // Number of nodes in each subdomain
