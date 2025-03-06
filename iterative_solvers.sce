@@ -7,7 +7,7 @@ exec("Tools.sce");
     * Primal Schur Approach - CG
     **********************************/
 
-    function uub=Primal_Conjugate_Gradient(eles,S,E,A,h,Fd,m,tol)
+    function [uub, n_iter] =Primal_Conjugate_Gradient(eles,S,E,A,h,Fd,m,tol)
 
         //preliminary 
 
@@ -64,6 +64,7 @@ exec("Tools.sce");
         //Check onvergence 
         norm_r0 = norm(rrb);  
         if norm_r0 == 0 then
+            n_iter = 0;
             disp("Initial residual is zero. Already converged.");
             return
         end
@@ -120,6 +121,7 @@ exec("Tools.sce");
             //Check onvergence 
             rel_error = norm(rrb) / norm_r0; 
             if rel_error < tol then
+                n_iter = k;
                 disp("Converged at iteration " + string(k));
                 break;
             end
@@ -133,7 +135,7 @@ exec("Tools.sce");
     * Primal BDD - Preconditioned CG
     **********************************/
 
-    function u = Primal_BDD(eles, S, E, A, h, Fd, m, tol)
+    function [u, n_iter]= Primal_BDD(eles, S, E, A, h, Fd, m, tol)
 
         //Preliminary 
 
@@ -163,6 +165,7 @@ exec("Tools.sce");
         //Check onvergence 
         norm_r0 = norm(rr);  
         if norm_r0 < tol then
+            n_iter = 0;
             disp("BDD : Converged at iteration 0");
             /* Post processing */
             return;
@@ -222,6 +225,7 @@ exec("Tools.sce");
             //Check onvergence 
             rel_error = norm(rr) / norm_r0; 
             if rel_error < tol then
+                n_iter = i;
                 disp("Converged at iteration " + string(i));
                 break;
             end
@@ -236,7 +240,7 @@ exec("Tools.sce");
     * Section 2 : Domain Decomposition
     * Dual TEFI - Preconditioned CG
     **********************************/
-    function u_b_conca = Dual_TEFI(eles, S, E, A, h, Fd, m, tol)  
+    function [u_b_conca, n_iter] = Dual_TEFI(eles, S, E, A, h, Fd, m, tol)  
 
         //Preliminary 
 
@@ -288,6 +292,7 @@ exec("Tools.sce");
         //Check onvergence 
         norm_r0 = norm(rr);  
         if norm_r0 < tol then
+            n_iter = 0;
             disp("TEFI : Converged at iteration 0");
             /* Post processing */
             Sd_conca=build_Sd_conca(S);
@@ -354,6 +359,7 @@ exec("Tools.sce");
             //Check onvergence 
             rel_error = norm(rr) /norm_r0; 
             if rel_error < tol then
+                n_iter = i;
                 disp("Converged at iteration " + string(i));
                 break;
             end
