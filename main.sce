@@ -3,6 +3,7 @@ exec("direct_solvers.sce");
 exec("iterative_solvers.sce");
 exec("Tools.sce");
 
+
 /*** Input Parameters ***/
 
 // fixed values
@@ -48,61 +49,107 @@ K = K_global(E, A, h, n);
 u_ref = extract_u_ref(u, S, eles);
 
 /* Section2,3 - Direct */ 
+
+start1 = timer();
 Up=Primal_direct(eles,S,E,A,h,Fd);
+end1 = timer();
+t_pd = end1 - start1;
+
+disp("Up:");
+disp(Up);
+
+start2 = timer();
 Ud=Dual_direct(eles,S,E,A,h,Fd);
+end2 = timer();
+t_dd = end2 - start2;
+
 err_p_direct = relative_error(u_ref, Up);
 err_d_direct = relative_error(u_ref, Ud);
 
-//disp("Ud:");
-//disp(Ud);
+disp("Ud:");
+disp(Ud);
 
 /* Section2 - Primal CG */ 
-[uub, n_pcg]=Primal_Conjugate_Gradient(eles,S,E,A,h,Fd,max_iter,tol)
+
+start3 = timer();
+[uub, n_pcg]=Primal_Conjugate_Gradient(eles,S,E,A,h,Fd,max_iter,tol);
+end3 = timer();
+t_p_cg = end3 - start3;
+
 err_p_cg = relative_error(u_ref, uub);
 
 /* Section3 - Primal CG precond */
+
+start4 = timer();
 [u_BDD, n_bdd] = Primal_BDD(eles, S, E, A, h, Fd, max_iter, tol);
+end4 = timer();
+t_p_bdd = end4 - start4;
+
 err_p_bdd = relative_error(u_ref, u_BDD);
 
 /* Section2 - Dual CG precond */ 
+
+start5 = timer();
 [u_b_conca, n_dtefi] = Dual_TEFI(eles,S,E,A,h,Fd,max_iter,tol); 
+end5 = timer();
+t_d_tefi = end5 - start5;
+
 err_d_tefi = relative_error(u_ref, u_b_conca);
 
-//disp("u_b_conca:");
-//disp(u_b_conca);
+disp("u_b_conca:");
+disp(u_b_conca);
+
 
 
 
 // save number of iterations till convergence
 fd1 = mopen("iter.txt", "at"); 
 if (N == 60) & (eles == 5) & (L == 1.0) then
-    mfprintf("N eles L H h h/H prim_cg prim_bdd dual_tefi\n");
+    mfprintf(fd1, "N eles L H h h/H prim_cg prim_bdd dual_tefi\n");
 end
-mfprintf(fd1, "%d %d %d %d %d %d %d %d %d %d %d\n", N, eles, L, H, h, h/H, n_pcg, n_bdd, n_dtefi); 
+mfprintf(fd1, "%d %d %f %f %f %f %d %d %d\n", N, eles, L, H, h, h/H, n_pcg, n_bdd, n_dtefi); 
 mclose(fd1);
 
 
 // save the relative error
 fd2 = mopen("error.txt", "at"); 
 if (N == 60) & (eles == 5) & (L == 1.0) then
-    mfprintf("N eles L H h h/H prim_dir dual_dir prim_cg prim_bdd dual_tefi\n");
+    mfprintf(fd2, "N eles L H h h/H prim_dir dual_dir prim_cg prim_bdd dual_tefi\n");
 end
-mfprintf(fd2, "%d %d %d %d %d %f %e %e %e %e %e\n", N, eles, L, H, h, h/H, err_p_direct, err_d_direct, err_p_cg, err_p_bdd, err_d_tefi); 
+mfprintf(fd2, "%d %d %f %f %f %f %e %e %e %e %e\n", N, eles, L, H, h, h/H, err_p_direct, err_d_direct, err_p_cg, err_p_bdd, err_d_tefi); 
 mclose(fd2);
+
+
+// save the time
+fd3 = mopen("time.txt", "at");
+if (N == 60) & (eles == 5) & (L == 1.0) then
+    mfprintf(fd3, "N eles L H h h/H prim_dir dual_dir prim_cg prim_bdd dual_tefi\n");
+end
+mfprintf(fd3, "%d %d %f %f %f %f %f %f %f %f %f\n", N, eles, L, H, h, h/H, t_pd, t_dd, t_p_cg, t_p_bdd, t_d_tefi);
+mclose(fd3);
 
 
 // plot results
 
-x_nodes = (0:n) * h;
+x_nodes = (1:n) * h;
 x_interface = (1:S-1) * H;
 
-y = Fd / (E * A) * x_nodes;
+y = Fd / (E * A) * x_nodes; // analytical solution
 
-plot(x_nodes, y, '-k', x_nodes, u, '-#6fa3f7', x_nodes, u_pen, '-#f28e2b', x_nodes, u_L, '-#4e79a7', x_interface, Up, '-o#ff9e4d', x_interface, Ud, '-l#9a56b6', x_interface, uub, '-m#f4d03f', x_interface, u_BDD, '-c#95a5a6', x_interface, u_b_conca, '-y');
+plot(x_nodes, y, '-k', ...
+    x_nodes, u, '-', "color", [111/255, 163/255, 247/255], ... 
+    x_nodes, u_pen, '-', "color", [242/255, 142/255, 43/255], ...
+    x_nodes, u_L, '-', "color", [78/255, 121/255, 167/255], ...
+    x_interface, Up, '-o', "color", [255/255, 158/255, 77/255], ...
+    x_interface, Ud, '-l', "color", [151/255, 86/255, 182/255], ...
+    x_interface, uub, '-m', "color", [244/255, 208/255, 63/255], ...
+    x_interface, u_BDD, '-c', "color", [149/255, 165/255, 166/255], ...
+    x_interface, u_b_conca, '-y');
+
 legend(["Analytical solution", "Elimination", "Penalty", "Lagrangian", "Primal direct", "Dual direct", "Primal CG", "Primal BDD", "Dual TEFI"]);
 xlabel("x");
 ylabel("u");
-title(strcat("N=", string(N), ", eles=", string(eles), ", L=", string(L)));
+title("N=" + string(N) + ", eles=" + string(eles) + ", L=" + string(L));
 
-fig_name = strcat("N", string(N), "_eles", string(eles), "_L", string(L), ".png");
+fig_name = "N" + string(N) + "_eles" + string(eles) + "_L" + string(L) + ".png";
 xs2png(gcf(), fig_name);
