@@ -193,7 +193,7 @@ function [uub, nb_iter, rel_err]=Conjugate_Gradient(eles,S,E,A,h,Fd,m,tol)
            nb_iter = k;
            rel_err = rel_error;
            disp("Converged at iteration " + string(k));
-           break;
+           return;
         end
     end
     
