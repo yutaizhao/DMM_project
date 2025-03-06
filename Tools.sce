@@ -1,55 +1,33 @@
 
-/*** Input Parameters ***/
+//Create stiffness matrix
+function K_s=build_K(eles,E,A,h,s,S)
 
-L = 1.0;          // Length of the bar
-E = 1e4;          // Young'A Modulus
-A = 1.0;          // Surface
-Fd = 500;         // Applied force at the last element (N)
-N = 9;           // Number of elements
-n = N + 1;        // Number of nodes
-h = L / N;        // Length of the elements
-
-eles = 3;           // Number of elements in each subdomain 
-nodes = eles + 1;   // Number of nodes in each subdomain
-S = N / eles;      // Number of subdomains
-Inodes = S + 1;        // Number of interfacial nodes
-H = L / S;         // Length of the subdomains
-
-/*********************************
-* Section 2 : Domain Decomposition
-* Primal Schur Approach - TEFI
-**********************************/
-
-/* Local stiffness matrix  */
-
-function K=build_K(eles,E,A,h,s,S)
-    
     nodes = eles+1;
     k_local = (E * A / h) * [1, -1; -1, 1];
-    
+
     if s==1 then
         // Initialization of stiffness matices of subdomain 1
         K_1 = zeros(nodes, nodes);
-        K = zeros(nodes-1, nodes-1);
+        K_s = zeros(nodes-1, nodes-1);
         for i = 1:eles
             K_1(i:i+1, i:i+1) = K_1(i:i+1, i:i+1) + k_local;
         end
-        K = K_1(2:$,2:$);
-        
+        K_s = K_1(2:$,2:$);
     elseif s==S then 
-        K_S = zeros(nodes, nodes);
+        // Initialization of stiffness matices of subdomain S
+        K_s = zeros(nodes, nodes);
         for i = 1 : eles-1
-            K_S(i, i) = K_S(i, i) + 2;
-            K_S(i, i+1) = K_S(i, i+1) - 1;
-            K_S(i+1, i) = K_S(i+1, i) - 1;
+            K_s(i, i) = K_s(i, i) + 2;
+            K_s(i, i+1) = K_s(i, i+1) - 1;
+            K_s(i+1, i) = K_s(i+1, i) - 1;
         end
-        K_S(eles, eles) = K_S(eles, eles) + 1;
-        K_S(nodes, nodes) = K_S(nodes, nodes) + 1;
-        K_S(1, nodes) = K_S(1, nodes) - 1;
-        K_S(nodes, 1) = K_S(nodes, 1) - 1;
-        K = K_S * (E * A / h);
-        
+        K_s(eles, eles) = K_s(eles, eles) + 1;
+        K_s(nodes, nodes) = K_s(nodes, nodes) + 1;
+        K_s(1, nodes) = K_s(1, nodes) - 1;
+        K_s(nodes, 1) = K_s(nodes, 1) - 1;
+        K_s = K_s * (E * A / h);
     elseif (s > 1 && s < S) then 
+        // Initialization of stiffness matices of subdomain s
         K_s = zeros(nodes, nodes);
         for i = 1:eles-1
             K_s(i, i) = K_s(i, i) + 2; 
@@ -64,12 +42,12 @@ function K=build_K(eles,E,A,h,s,S)
         K_s(eles-1, nodes) = K_s(eles-1, nodes) - 1;
         K_s(eles, eles) = K_s(eles, eles) + 1;
         K_s(nodes, nodes) = K_s(nodes, nodes) + 1; 
-        K = K_s * (E * A / h);
+        K_s = K_s * (E * A / h);
     end
 
 endfunction
 
-//Extract different parts of K
+//Extract different parts of K local
 function [Kii, Kib, Kbi, Kbb] = extract_K(K, s, S)
     if (s == 1 || s == S) then
         Kii = K(1:$-1, 1:$-1);
@@ -84,8 +62,18 @@ function [Kii, Kib, Kbi, Kbb] = extract_K(K, s, S)
     end
 endfunction
 
-/* Local Sp */
+//Create Primal assemly
+function AA=build_AA(S)
+    AA = zeros((S-1,2*S-2));
+    for i = 2:S-1
+        AA(i-1,2*i-2) = 1;
+        AA(i,2*i-1) = 1;
+    end
+    AA(1,1)=1;
+    AA(S-1,2*S-2)=1;
+endfunction
 
+/* Local Sp */
 function Sp=build_Sp(s,S)
     if s==1 then
         K_1 = build_K(eles,E,A,h,s,S);
@@ -100,7 +88,6 @@ function Sp=build_Sp(s,S)
 endfunction
 
 /* Concatenated Sp */
-
 function Sp_conca=build_Sp_conca(S)
     Sp_conca = zeros((2*S-2,2*S-2));
     Sp_1=build_Sp(1,S);
@@ -115,7 +102,6 @@ function Sp_conca=build_Sp_conca(S)
     Sp_conca(1,1)=Sp_1;
     Sp_conca(2*S-2,2*S-2)=Sp_S;
 endfunction
-
 
 /* Local Sd */
 function Sd=build_Sd(s,S)
@@ -178,22 +164,16 @@ function Rb=build_Rb(s,S)
     end
 endfunction
 
-
 /* Global Rb */
 function Rb_conca=build_Rb_conca(S)
-
     Rb_s = ones(2,1); //kernel
     Rb_S = 1;
-
     Rb_conca = zeros((2*S-2,S-1));
-
     for i = 1:S-2
         Rb_conca(2*i,i)= Rb_s(1);
         Rb_conca(2*i+1,i)= Rb_s(2);
     end
-    
     Rb_conca(2*S-2,S-1) = Rb_S;
-    
 endfunction
 
 /*Local bp*/
@@ -221,13 +201,12 @@ function bd=build_bd(s,S)
 endfunction
 
 /*global bd*/
-function bbd=build_bbd(S)
+function bbd=build_bbd(S,Fd)
     AA_=build_AA_(S);
     Sd_conca=build_Sd_conca(S);
     bp_conca=build_bp_conca(S,Fd);
     bbd = AA_ * Sd_conca * bp_conca ;
 endfunction
-
 
 /*Local e*/
 function e=build_e(s,S)
@@ -236,8 +215,6 @@ function e=build_e(s,S)
     e = Rb'*bp;
 endfunction
 
-
-
 /*Global G*/
 function G=build_G(S)
     Rb_conca=build_Rb_conca(S);
@@ -245,16 +222,11 @@ function G=build_G(S)
     G = AA_ * Rb_conca;
 endfunction
 
-G = build_G(S);
-
 /*Global e*/
-function ee=build_ee(S,Fd)
-    
+function ee=build_ee(S,Fd)    
     Rb_conca=build_Rb_conca(S);
-    bp = zeros((2*S-2,1));
-    bp(2*S-2) = Fd;
-    
-    ee = Rb_conca'*bp;
+    bp_conca=build_bp_conca(S,Fd);
+    ee = Rb_conca'*bp_conca;
 endfunction
 
 /*A_tild*/
@@ -271,128 +243,24 @@ function SSd_inv=build_SSd_inv(S)
 endfunction
 
 
-/*P*/
-P = eye(S-1,S-1) - G*inv(G'*G)*G';
-
-/*lambda0*/
-ee=build_ee(S,Fd);
-lambda0 =  - G*inv(G'*G)*ee;
-
-//TEFI
-function u_b=TEFI(eles,S,E,A,h,Fd,m,tol)
-    
-    /*Initialisation */
-    
-    AA_=build_AA_(S);
-    SSd_inv=build_SSd_inv(S);
-    
-    //lambda(0)
-    Lambda = lambda0;
-
-    //Compute local concatenated lambda
-    lambda_concatanated = AA_' * Lambda;
-    
-    /** Compute r0 **/
-    
-    r_concatanated = [];
-
-    //s=1
-    bd=build_bd(1,S);
-    Sd=build_Sd(1,S);
-    lambda = lambda_concatanated(1);
-    r_concatanated = [r_concatanated; -bd-Sd*lambda];
-    
-    //s>1, s<S
-    for s=2:S-1
-        bd=build_bd(s,S);
-        Sd=build_Sd(s,S);
-        lambda = lambda_concatanated(2*(s-1):2*(s-1)+1);
-        r_concatanated = [r_concatanated; -bd-Sd*lambda];
+// block diagonal matrix
+function A = block_diag(B_list)
+    total_rows = 0;
+    total_cols = 0;
+    for i = 1:length(B_list)
+        [rows, cols] = size(B_list(i));
+        total_rows = total_rows + rows;
+        total_cols = total_cols + cols;
     end
-    
-    //s=S
-    bd=build_bd(S,S);
-    Sd=build_Sd(S,S);
-    lambda = lambda_concatanated($);
-    r_concatanated = [r_concatanated; -bd-Sd*lambda];
-    
-    rr = P'*(AA_*r_concatanated);
-    
-    //Check onvergence 
-    norm_r0 = norm(rr);  
 
-    /** Compute z0,d0 **/
-    
-    zz = P*SSd_inv*rr;
-    dd = zz;
-    
-    p_list=[];
-    dd_list=[dd];
-    
-    /* For loop */
-    
-    for i=1:m 
-        
-        // Compute local p
-        d_concatanated = AA_' * dd;
-        local_Sdxd_concatanated = [];
-        
-        Sd = build_Sd(1,S);
-        d = d_concatanated(1);
-        local_Sdxd_concatanated = [local_Sdxd_concatanated, Sd*d];
-        for s=2:S-1
-            Sd = build_Sd(s,S);
-            d = d_concatanated(2*(s-1):2*(s-1)+1);
-            local_Sdxd_concatanated = [local_Sdxd_concatanated; Sd*d];
-        end 
-        Sd = build_Sd(S,S);
-        d = d_concatanated($);
-        local_Sdxd_concatanated = [local_Sdxd_concatanated; Sd*d];
-        //END of computation p
-        
-        p = P'*AA_*local_Sdxd_concatanated;
-        p_list=[p_list;p];
-        
-        // Update CG iter
-        a = (rr'*dd)/(d'*p);
-        Lambda = Lambda + a*dd;
-       
-        rr = rr -a*p;
-        zz = P*SSd_inv*rr;
-        
-        beta_list =[];
-        for j = 1:i
-            beta_list = [beta_list; -(zz'*p_list(j))/(dd_list(j)'*p_list(j))];
-        end 
-        
-        extra_sum = 0;
-        for j = 1:i
-            extra_sum = extra_sum + beta_list(j)*dd;
-        end
-        dd = zz + extra_sum;
-        dd_list=[dd_list; dd];
-        
-         //Check onvergence 
-        rel_error = norm(rr) / (norm_r0+E-20); 
-        if rel_error < tol then
-           disp("Converged at iteration " + string(i));
-           break;
-        end
-        
+    A = zeros(total_rows, total_cols);
+
+    row_offset = 0;
+    col_offset = 0;
+    for i = 1:length(B_list)
+        [rows, cols] = size(B_list(i));
+        A(row_offset+1:row_offset+rows, col_offset+1:col_offset+cols) = B_list(i);
+        row_offset = row_offset + rows;
+        col_offset = col_offset + cols;
     end
-   
-    /* Post processing */
-    Sd_conca=build_Sd_conca(S);
-    SSd = AA_*Sd_conca*AA_';
-    bbd=build_bbd(S);
-    bp_conca=build_bp_conca(S,Fd);
-    Rb_conca=build_Rb_conca(S);
-    alpha_b = inv(G'*G)*G'*(-bbd-SSd*Lambda);
-    u_b = Sd_conca*(bp_conca+AA_'*Lambda)+Rb_conca*alpha_b;
-    disp(u_b);
-    
 endfunction
-
-u_b = TEFI(eles,S,E,A,h,Fd,10,0.0001);
-
-

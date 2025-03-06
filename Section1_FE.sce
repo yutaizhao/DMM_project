@@ -1,9 +1,7 @@
-
 // direct solution without domain decomposition 
 function K = K_global(E, A, h, n)
     K = zeros(n, n);
     K = 2 * eye(n, n) + diag(-ones(n - 1, 1), 1) + diag(-ones(n - 1, 1), -1);
-    disp(K);
     K(1, 1) = 1;
     K(n, n) = 1;
     K = K * E * A / h;
@@ -43,4 +41,3 @@ function [u, f] = lagrangian(n, K_global, Fd)
     f = f_lm(1:$ - 1);
     f(1) = - x_extend($);
 endfunction
-

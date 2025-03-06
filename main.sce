@@ -1,5 +1,7 @@
-exec("direct_solvers.sci");
-exec("functions.sci");
+exec("Section1_FE.sce");
+exec("direct_solvers.sce");
+exec("iterative_solvers.sce");
+exec("Tools.sce");
 
 /*** Input Parameters ***/
 
@@ -18,8 +20,8 @@ L_list = [1.0, 2.0, 3.0, 4.0, 5.0];
 
 // test values
 L = 1.0;
-N = 15;
-eles = 3;
+N = 10;
+eles = 2;
 
 n = N + 1;        // Number of nodes
 h = L / N;        // Length of the elements
@@ -44,32 +46,40 @@ endfunction
 
 
 tol = 1e-6;
-max_iter = 100;
-
+max_iter = 1000;
 K = K_global(E, A, h, n);
+
+/* Executions */ 
+
+/* Section1 */ 
 [u, f] = elimination(n, K, Fd);
 [u_pen, f_pen] = penalty(E, A, h, K, Fd);
 [u_L, f_L] =lagrangian(n, K, Fd);
 
 u_ref = extract_u_ref(u, S, eles);
 
-[u_b, nb_iter, rel_err] = primal_schur_BDD(eles, S, E, A, h, Fd, max_iter, tol)
+/* Section2,3 - Direct */ 
+Up=Primal_direct(eles,S,E,A,h,Fd);
+Ud=Dual_direct(eles,S,E,A,h,Fd);
 
-err_primal = relative_error(u_ref, u_b);
+/* Section2 - Primal CG */ 
+uub=Primal_Conjugate_Gradient(eles,S,E,A,h,Fd,max_iter,tol)
 
-/*
-disp("global K");
-disp(K);
+/* Section2 - Dual CG precond */ 
+u_b_conca = Dual_TEFI(eles,S,E,A,h,Fd,max_iter,tol); 
+
 disp("u ref:");
 disp(u);
 disp(u_pen);
 disp(u_L);
-*/
 
-disp("u ref:");
-disp(u_ref);
-disp("u precond schur:");
-disp(u_b);
+disp("u Primal:");
+disp(Up);
+disp("u Dual:");
+disp(Ud);
 
-disp("error:");
-disp(err);
+disp("uub:");
+disp(uub);
+disp("u_b_conca:");
+disp(u_b_conca);
+
