@@ -236,7 +236,7 @@ exec("Tools.sce");
     * Section 2 : Domain Decomposition
     * Dual TEFI - Preconditioned CG
     **********************************/
-    function u_b_conca = Dual_TEFI(eles, S, E, A, h, Fd, m, tol)  
+    function u_b_conca_extract = Dual_TEFI(eles, S, E, A, h, Fd, m, tol)  
 
         //Preliminary 
 
@@ -297,6 +297,11 @@ exec("Tools.sce");
             Rb_conca=build_Rb_conca(S);
             alpha_b = inv(G'*G)*G'*(-bbd-SSd*Lambda);
             u_b_conca = Sd_conca*(bp_conca+AA_'*Lambda)+Rb_conca*alpha_b;
+            u_b_conca_extract =[];
+            for s=2:S-1
+                u_b_conca_extract = [u_b_conca_extract;u_b_conca(2*(s-1))];
+            end
+            u_b_conca_extract = [u_b_conca_extract;u_b_conca($)];
             return;
         end
 
@@ -368,7 +373,11 @@ exec("Tools.sce");
         Rb_conca=build_Rb_conca(S);
         alpha_b = inv(G'*G)*G'*(-bbd-SSd*Lambda);
         u_b_conca = Sd_conca*(bp_conca+AA_'*Lambda)+Rb_conca*alpha_b;
-
+        u_b_conca_extract=[];
+        for s=2:S-1
+            u_b_conca_extract = [u_b_conca_extract;u_b_conca(2*(s-1))];
+        end
+        u_b_conca_extract = [u_b_conca_extract;u_b_conca($)];
     endfunction
 
 
