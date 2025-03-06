@@ -55,8 +55,8 @@ Up=Primal_direct(eles,S,E,A,h,Fd);
 end1 = timer();
 t_pd = end1 - start1;
 
-disp("Up:");
-disp(Up);
+//disp("Up:");
+//disp(Up);
 
 start2 = timer();
 Ud=Dual_direct(eles,S,E,A,h,Fd);
@@ -66,8 +66,8 @@ t_dd = end2 - start2;
 err_p_direct = relative_error(u_ref, Up);
 err_d_direct = relative_error(u_ref, Ud);
 
-disp("Ud:");
-disp(Ud);
+//disp("Ud:");
+//disp(Ud);
 
 /* Section2 - Primal CG */ 
 
@@ -96,8 +96,8 @@ t_d_tefi = end5 - start5;
 
 err_d_tefi = relative_error(u_ref, u_b_conca);
 
-disp("u_b_conca:");
-disp(u_b_conca);
+//disp("u_b_conca:");
+//disp(u_b_conca);
 
 
 
@@ -136,17 +136,18 @@ x_interface = (1:S-1) * H;
 
 y = Fd / (E * A) * x_nodes; // analytical solution
 
-plot(x_nodes, y, '-k', ...
-    x_nodes, u, '-', "color", [111/255, 163/255, 247/255], ... 
-    x_nodes, u_pen, '-', "color", [242/255, 142/255, 43/255], ...
-    x_nodes, u_L, '-', "color", [78/255, 121/255, 167/255], ...
-    x_interface, Up, '-o', "color", [255/255, 158/255, 77/255], ...
-    x_interface, Ud, '-l', "color", [151/255, 86/255, 182/255], ...
-    x_interface, uub, '-m', "color", [244/255, 208/255, 63/255], ...
-    x_interface, u_BDD, '-c', "color", [149/255, 165/255, 166/255], ...
-    x_interface, u_b_conca, '-y');
+plot(x_nodes, y, '-k');  
+plot(x_nodes, u, '-b');   
+plot(x_nodes, u_pen, '-r'); 
+plot(x_nodes, u_L, '-g');  
+plot(x_interface, Up, '-c');  
+plot(x_interface, Ud, '-m');  
+plot(x_interface, uub, '-y'); 
+plot(x_interface, u_BDD, '-', color=[1, 0.647, 0]); 
+plot(x_interface, u_b_conca, '-', color=[0.5, 0, 0.5]); 
 
-legend(["Analytical solution", "Elimination", "Penalty", "Lagrangian", "Primal direct", "Dual direct", "Primal CG", "Primal BDD", "Dual TEFI"]);
+legend(["Analytical solution", "Elimination", "Penalty", "Lagrangian", "Primal direct", "Dual direct", "Primal CG", "Primal BDD", "Dual TEFI"], "in_upper_left");
+
 xlabel("x");
 ylabel("u");
 title("N=" + string(N) + ", eles=" + string(eles) + ", L=" + string(L));
