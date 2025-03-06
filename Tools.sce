@@ -230,37 +230,27 @@ function ee=build_ee(S,Fd)
 endfunction
 
 /*A_tild*/
+function AA_tild=build_AA_tild(S)
+    AA=build_AA(S);
+    AA_tild = pinv(AA*AA')*AA;
+endfunction
+
+/*A_tild_*/
 function AA_tild_=build_AA_tild_(S)
     AA_=build_AA_(S);
     AA_tild_ = pinv(AA_*AA_')*AA_;
 endfunction
 
-/*Sd_inv*/
+/*Sd_tild_inv*/
 function SSd_inv=build_SSd_inv(S)
     AA_tild_=build_AA_tild_(S);
     Sp_conca=build_Sp_conca(S);
     SSd_inv=AA_tild_*Sp_conca*AA_tild_';
 endfunction
 
-
-// block diagonal matrix
-function A = block_diag(B_list)
-    total_rows = 0;
-    total_cols = 0;
-    for i = 1:length(B_list)
-        [rows, cols] = size(B_list(i));
-        total_rows = total_rows + rows;
-        total_cols = total_cols + cols;
-    end
-
-    A = zeros(total_rows, total_cols);
-
-    row_offset = 0;
-    col_offset = 0;
-    for i = 1:length(B_list)
-        [rows, cols] = size(B_list(i));
-        A(row_offset+1:row_offset+rows, col_offset+1:col_offset+cols) = B_list(i);
-        row_offset = row_offset + rows;
-        col_offset = col_offset + cols;
-    end
+/*Sp_tild_inv*/
+function SSp_inv=build_SSp_inv(S)
+    AA_tild=build_AA_tild(S);
+    Sd_conca=build_Sd_conca(S);
+    SSp_inv=AA_tild*Sd_conca*AA_tild';
 endfunction

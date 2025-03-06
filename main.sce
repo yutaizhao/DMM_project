@@ -20,8 +20,8 @@ L_list = [1.0, 2.0, 3.0, 4.0, 5.0];
 
 // test values
 L = 1.0;
-N = 10;
-eles = 2;
+N = 20;
+eles = 4;
 
 n = N + 1;        // Number of nodes
 h = L / N;        // Length of the elements
@@ -65,6 +65,9 @@ Ud=Dual_direct(eles,S,E,A,h,Fd);
 /* Section2 - Primal CG */ 
 uub=Primal_Conjugate_Gradient(eles,S,E,A,h,Fd,max_iter,tol)
 
+/* Section3 - Primal CG precond */
+u_BDD = Primal_BDD(eles, S, E, A, h, Fd, max_iter, tol);
+
 /* Section2 - Dual CG precond */ 
 u_b_conca = Dual_TEFI(eles,S,E,A,h,Fd,max_iter,tol); 
 
@@ -80,6 +83,8 @@ disp(Ud);
 
 disp("uub:");
 disp(uub);
+disp("u_BDD:");
+disp(u_BDD);
 disp("u_b_conca:");
 disp(u_b_conca);
 
