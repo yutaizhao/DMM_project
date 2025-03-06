@@ -136,6 +136,7 @@ x_interface = (1:S-1) * H;
 
 y = Fd / (E * A) * x_nodes; // analytical solution
 
+figure();
 plot(x_nodes, y, '-k');  
 plot(x_nodes, u, '-b');   
 plot(x_nodes, u_pen, '-r'); 
@@ -151,6 +152,3 @@ legend(["Analytical solution", "Elimination", "Penalty", "Lagrangian", "Primal d
 xlabel("x");
 ylabel("u");
 title("N=" + string(N) + ", eles=" + string(eles) + ", L=" + string(L));
-
-fig_name = "N" + string(N) + "_eles" + string(eles) + "_L" + string(L) + ".png";
-xs2png(gcf(), fig_name);

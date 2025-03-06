@@ -1,9 +1,9 @@
 // define total number of elements and number of elements in each subdomain
-N_list = [60, 120, 180, 240];
-eles_list = [5, 10, 15, 20];
+N_list = [50, 100];
+eles_list = [5, 10, 25];
 
 // define length of the bar
-L_list = [1.0, 2.0, 3.0, 4.0];
+L_list = [1.0, 5.0];
 
 // test values
 for N = N_list
